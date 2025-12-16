@@ -1,0 +1,14 @@
+# STT plugins
+ovos-stt-plugin-server
+
+# WakeWord plugins
+ovos-ww-plugin-vosk
+ovos_ww_plugin_precise_onnx
+
+oauthlib~=3.2
+SpeechRecognition>=3.8.1
+PyAudio~=0.2
+ovos-utils
+ovos-bus-client
+ovos-plugin-manager
+ovos-config

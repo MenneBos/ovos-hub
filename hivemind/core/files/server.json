@@ -1,0 +1,73 @@
+{
+  "agent_protocol": {
+    "module": "hivemind-ovos-agent-plugin",
+    "hivemind-ovos-agent-plugin": {
+      "host": "0.0.0.0",
+      "port": 8181
+    }
+  },
+  "binary_protocol": {
+    "module": "hivemind-audio-binary-protocol-plugin",
+    "hivemind-audio-binary-protocol-plugin": {
+      "stt": {
+        "module": "ovos-stt-plugin-server",
+        "ovos-stt-plugin-server": {
+          "urls": [
+            "http://0.0.0.0:7070/stt",
+            "https://whisper.tigregotico.pt/stt",
+            "https://stt.smartgic.io/fasterwhisper/stt"
+          ]
+        }
+      },
+      "tts": {
+        "module": "ovos-tts-plugin-server",
+        "ovos-tts-plugin-server": {
+          "host": "http://0.0.0.0:8089"
+        }
+      },
+      "vad": {
+        "module": "ovos-vad-plugin-silero",
+        "ovos-vad-plugin-silero": {
+          "threshold": 0.2
+        }
+      },
+      "wakeword": "hey_mycroft",
+      "hotwords": {
+        "hey_mycroft": {
+          "module": "ovos-ww-plugin-precise-lite",
+          "model": "https://github.com/OpenVoiceOS/precise-lite-models/raw/master/wakewords/en/hey_mycroft.tflite"
+        }
+      }
+    }
+  },
+  "network_protocol": {
+    "hivemind-websocket-plugin": {
+      "host": "0.0.0.0",
+      "port": 5678
+    },
+    "hivemind-http-plugin": {
+      "host": "0.0.0.0",
+      "port": 5679
+    }
+  },
+  "database": {
+    "module": "hivemind-redis-db-plugin",
+    "hivemind-redis-db-plugin": {
+      "name": "clients",
+      "subfolder": "hivemind-core",
+      "host": "0.0.0.0",
+      "port": 6379
+    }
+  },
+  "binarize": false,
+  "allowed_encodings": [
+    "JSON-B64",
+    "JSON-URLSAFE-B64",
+    "JSON-B32",
+    "JSON-HEX"
+  ],
+  "allowed_ciphers": [
+    "CHACHA20-POLY1305",
+    "AES-GCM"
+  ]
+}

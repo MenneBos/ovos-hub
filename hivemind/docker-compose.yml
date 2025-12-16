@@ -1,0 +1,170 @@
+
+x-podman: &podman
+  userns_mode: keep-id
+  security_opt:
+    - "label=disable"
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    mode: non-blocking
+    max-buffer-size: 4m
+    max-size: "200m"
+    max-file: "1"
+
+x-common-environment: &common-environment
+  TZ: ${TZ:-UTC}
+  HM_HOST: $HM_HOST
+  HM_PORT: $HM_PORT
+
+x-resource-limits: &resource-limits
+  deploy:
+    resources:
+      limits:
+        memory: 256M
+      reservations:
+        memory: 64M
+
+x-volumes: &volumes
+  volumes:
+    # ovos
+    - ${CONFIG_BASE_DIR}/mycroft:/home/ovos/.config/mycroft
+    - ${DATA_BASE_DIR}/mycroft:/home/ovos/.local/share/mycroft
+    - ${CACHE_BASE_DIR}/mycroft:/home/ovos/.cache/mycroft
+    - ${STATE_BASE_DIR}/mycroft:/home/ovos/.local/state/mycroft
+    - ${TMP_FOLDER}:/tmp/mycroft
+    # hm
+    - ${CONFIG_BASE_DIR}/hivemind:/home/ovos/.config/hivemind:z
+    - ${DATA_BASE_DIR}/hivemind:/home/ovos/.local/share/hivemind
+    - ${CACHE_BASE_DIR}/hivemind:/home/ovos/.cache/hivemind
+    - ${STATE_BASE_DIR}/hivemind:/home/ovos/.local/state/hivemind
+    # audio
+    - ~/.config/pulse/cookie:/home/ovos/.config/pulse/cookie:ro
+    - ${XDG_RUNTIME_DIR}/pipewire-0:${XDG_RUNTIME_DIR}/pipewire-0:ro
+    - ${XDG_RUNTIME_DIR}/pulse:${XDG_RUNTIME_DIR}/pulse:ro
+
+
+x-base: &base
+  <<: [*podman, *hm-volumes]
+  restart: unless-stopped
+  logging: *default-logging
+  #pull_policy: ${PULL_POLICY:-always}
+  user: ${MAIN_UID:-1000}:${MAIN_GID:-1000}
+  environment:
+    <<: *common-environment
+
+
+x-audio: &audio
+  <<: [*podman, *volumes]
+  devices:
+    - /dev/snd
+  environment:
+    <<: *common-environment
+    PULSE_SERVER: unix:${XDG_RUNTIME_DIR}/pulse/native
+    PULSE_COOKIE: /home/ovos/.config/pulse/cookie
+    XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR}
+    DBUS_SESSION_BUS_ADDRESS: unix:path=${XDG_RUNTIME_DIR}/bus
+
+services:
+
+  hivemind_redis:
+    restart: always
+    container_name: hivemind_redis
+    image: redis
+    ports:
+      - 6379:6379
+    volumes:
+      - ${CONFIG_BASE_DIR}}/hivemind-core/redis.conf:/usr/local/etc/redis/redis.conf
+      - ${DATA_BASE_DIR}/hivemind/redis:/data
+
+  hivemind_core:
+    <<: [*base, *resource-limits]
+    build:
+      context: ./core
+      dockerfile: Dockerfile
+    container_name: hivemind_core
+    hostname: hivemind_core
+    image: jarbasai/hivemind-core:latest
+    network_mode: host
+    depends_on:
+      hivemind_redis:
+        condition: service_started
+
+  hivemind_media_player:
+    <<: [*audio, *resource-limits]
+    build:
+      context: ./player
+      dockerfile: Dockerfile
+    container_name: hivemind_media_player
+    hostname: hivemind_media_player
+    image: jarbasai/hivemind-player:latest
+    ports:
+      - 5178:5678
+      - 5179:5679
+    depends_on:
+      hivemind_redis:
+        condition: service_started
+
+  hivemind_persona:
+    <<: [*base, *resource-limits]
+    build: ./persona
+    image: jarbasai/hivemind-persona:latest
+    container_name: persona_hivemind
+    environment:
+      <<: *common-environment
+      HM_KEY: $PERSONA_HM_KEY
+      HM_PASSWORD: $PERSONA_HM_PASSWORD
+    ports:
+      - "8315:8337"
+    depends_on:
+      hivemind_core:
+        condition: service_healthy
+
+  hivemind_webchat:  # frontend connects to HM
+    <<: [*base, *resource-limits]
+    build:
+      context: ./webchat
+      dockerfile: Dockerfile
+    container_name: hivemind_webchat
+    hostname: hivemind_webchat
+    image: jarbasai/hivemind-webchat:latest
+    ports:
+      - "9090:9090"
+
+  hivemind_chatroom:  # backend connects to HM
+    <<: [*base, *resource-limits]
+    build:
+      context: ./chatroom
+      dockerfile: Dockerfile
+    container_name: hivemind_chatroom
+    hostname: hivemind_chatroom
+    image: jarbasai/hivemind-chatroom:latest
+    ports:
+      - "8985:8985"
+    environment:
+      <<: *common-environment
+      HM_KEY: $CHATROOM_HM_KEY
+      HM_PASSWORD: $CHATROOM_HM_PASSWORD
+    depends_on:
+      hivemind_core:
+        condition: service_healthy
+
+  hivemind_matrix_bot:
+    <<: [*base, *resource-limits]
+    build:
+      context: ./matrix-bot
+      dockerfile: Dockerfile
+    container_name: hivemind_matrix_bot
+    hostname: hivemind_matrix_bot
+    image: jarbasai/hivemind-matrix-bot:latest
+    environment:
+      <<: *common-environment
+      HM_KEY: $MATRIX_HM_KEY
+      HM_PASSWORD: $MATRIX_HM_PASSWORD
+      MATRIX_BOT_NAME: $MATRIX_BOT_NAME
+      MATRIX_HOST: $MATRIX_HOST
+      MATRIX_ROOM: $MATRIX_ROOM
+      MATRIX_TOKEN: $MATRIX_TOKEN
+    depends_on:
+      hivemind_core:
+        condition: service_healthy

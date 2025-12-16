@@ -1,0 +1,64 @@
+
+x-podman: &podman
+  userns_mode: keep-id
+  security_opt:
+    - "label=disable"
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    mode: non-blocking
+    max-buffer-size: 4m
+    max-size: "200m"
+    max-file: "1"
+
+x-common-environment: &common-environment
+  TZ: ${TZ:-UTC}
+
+x-resource-limits: &resource-limits
+  deploy:
+    resources:
+      limits:
+        memory: 256M
+      reservations:
+        memory: 64M
+
+x-base: &base
+  <<: [*podman, *resource-limits]
+  restart: unless-stopped
+  logging: *default-logging
+  pull_policy: ${PULL_POLICY:-always}
+  user: ${MAIN_UID:-1000}:${MAIN_GID:-1000}
+  environment:
+    <<: *common-environment
+  volumes:
+    - ${CONFIG_BASE_DIR}/mycroft:/home/ovos/.config/mycroft
+    - ${DATA_BASE_DIR}/mycroft:/home/ovos/.local/share/mycroft
+    - ${CACHE_BASE_DIR}/mycroft:/home/ovos/.cache/mycroft
+    - ${STATE_BASE_DIR}/mycroft:/home/ovos/.local/state/mycroft
+    - ${TMP_FOLDER}:/tmp/mycroft
+
+services:
+  ovos_yaml_editor:
+    <<: *base
+    build:
+      context: ./ovos-yaml-editor
+      dockerfile: Dockerfile
+    container_name: ovos_yaml_editor
+    hostname: ovos_yaml_editor
+    image: jarbasai/ovos-yaml-editor:latest
+    ports:
+      - 9200:9200
+    environment: # TODO - move to .env file
+      EDITOR_USERNAME: admin
+      EDITOR_PASSWORD: password
+
+  ovos-skills-config-tool:
+    <<: *base
+    container_name: ovos-skills-config
+    image: ghcr.io/oscillatelabsllc/ovos-skill-config-tool:latest
+    ports:
+      - 8000:8000
+    environment: # TODO - move to .env file
+      OVOS_CONFIG_USERNAME: ovos
+      OVOS_CONFIG_PASSWORD: ovos

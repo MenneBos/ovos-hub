@@ -1,0 +1,5 @@
+ovos-solver-hivemind-plugin>=0.0.3
+ovos-workshop
+ovos-persona-server>=0.3.2
+ovos-openai-plugin
+uvicorn

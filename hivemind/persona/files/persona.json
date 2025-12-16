@@ -1,0 +1,10 @@
+{
+  "name": "Hivemind",
+  "solvers": [
+    "ovos-solver-hivemind-plugin",
+    "ovos-solver-failure-plugin"
+  ],
+  "ovos-solver-hivemind-plugin": {
+    "autoconnect": true
+  }
+}

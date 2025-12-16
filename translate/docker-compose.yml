@@ -1,0 +1,71 @@
+
+x-podman: &podman
+  userns_mode: keep-id
+  security_opt:
+    - "label=disable"
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    mode: non-blocking
+    max-buffer-size: 4m
+
+x-common-environment: &common-environment
+  TZ: ${TZ:-UTC}
+  HSA_OVERRIDE_GFX_VERSION: 11.0.0  # YMMV - I needed this for AMD Radeon RX 7600 XT
+
+
+x-tx-base: &tx-base
+  <<: *podman
+  restart: unless-stopped
+  logging: *default-logging
+  pull_policy: ${PULL_POLICY:-always}
+  user: ${MAIN_UID:-1000}:${MAIN_GID:-1000}
+  environment:
+    <<: *common-environment
+  network_mode: host
+  # GPU support
+  stdin_open: true
+  tty: true
+  cap_add:
+    - SYS_PTRACE
+  security_opt:
+    - seccomp=unconfined
+  group_add:
+    - video
+  ipc: host
+  devices:
+    - /dev/kfd
+    - /dev/dri
+  # volumes
+  volumes:
+    - ${CONFIG_BASE_DIR}/mycroft:/home/ovos/.config/mycroft
+    - ${DATA_BASE_DIR}/mycroft:/home/ovos/.local/share/mycroft
+    - ${CACHE_BASE_DIR}/mycroft:/home/ovos/.cache/mycroft
+    - ${STATE_BASE_DIR}/mycroft:/home/ovos/.local/state/mycroft
+    - ${TMP_FOLDER}:/tmp/mycroft
+
+
+
+services:
+  ovos_tx_nllb:
+    build:
+      context: ./nllb
+      dockerfile: Dockerfile
+    <<: *tx-base
+    container_name: ovos_tx_nllb
+    hostname: ovos_tx_nllb
+    restart: unless-stopped
+    image: jarbasai/ovos-translate-server-nllb-rocm:latest
+    ports:
+      - "9686:9686"
+    volumes:
+      - ${CTRANSLATE_DIR}:/home/ovos/.local/share/ctranslate2
+
+  ovos_tx_google:
+    <<: *tx-base
+    container_name: ovos_tx_google
+    hostname: ovos_tx_google
+    image: docker.io/smartgic/ovos-tx-server-google:alpha
+    ports:
+      - "9687:9686"
