@@ -38,7 +38,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/* /var/log/{apt,dpkg.log} /tmp/* /var/tmp/*
 
 # Setup Python environment
-RUN pip install --upgrade setuptools wheel uv
+RUN pip install --upgrade --ignore-installed setuptools wheel uv
 
 # Create user with specific UID/GID for better security and consistency
 RUN groupadd --gid "$USER_GID" "$USER" \
