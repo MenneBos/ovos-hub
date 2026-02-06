@@ -44,7 +44,7 @@ RUN groupmod -n "$USER" ubuntu \
  && chown -R "$USER:$USER" "/home/$USER"
 
 # Setup Python environment
-RUN pip install --upgrade setuptools wheel uv
+RUN pip install --upgrade --ignore-installed setuptools wheel uv
 
 # health check script
 ENV OVOS_NAMESPACE=mycroft
