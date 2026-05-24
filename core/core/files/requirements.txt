@@ -3,3 +3,4 @@ ovos-core[lgpl,plugins]
 ovos-skill-boot-finished
 ovos-skill-fallback-unknown
 ovos-padatious>=1.4.4a1
+pydantic>=2.0,<3.0
