@@ -1,1 +1,3 @@
 ovos-dinkum-listener[extras,linux]
+ovos-ww-plugin-vosk
+ovos-stt-plugin-chromium
